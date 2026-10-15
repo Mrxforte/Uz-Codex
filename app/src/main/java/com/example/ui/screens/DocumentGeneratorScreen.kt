@@ -1,10 +1,5 @@
 package com.example.ui.screens
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,9 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,7 +30,6 @@ fun DocumentGeneratorScreen(
     repository: LegalRepository,
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
     val templates = remember { repository.getAllDocumentTemplates() }
 
     var selectedCategory by remember { mutableStateOf("Barchasi") }
@@ -213,81 +205,18 @@ fun DocumentGeneratorScreen(
                     }
                 }
             } else {
-                // Formatted Preview
+                // Professional Full-Screen Document Viewer Mode with PDF Print, Zoom & Find Tools
                 val template = selectedTemplate!!
                 val formattedText = remember(template, fieldValues) {
                     repository.generateDocumentText(template, fieldValues)
                 }
 
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    item {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            shape = RoundedCornerShape(14.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, UzLegalBorder),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = formattedText,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    lineHeight = 20.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                ),
-                                modifier = Modifier.padding(16.dp)
-                            )
-                        }
-                    }
-
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Button(
-                                onClick = {
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    val clip = ClipData.newPlainText("Legal Document", formattedText)
-                                    clipboard.setPrimaryClip(clip)
-                                    Toast.makeText(context, "Nusxalandi", Toast.LENGTH_SHORT).show()
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = UzLegalPrimary),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(48.dp)
-                            ) {
-                                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Nusxalash")
-                            }
-
-                            Button(
-                                onClick = {
-                                    val sendIntent = Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        putExtra(Intent.EXTRA_TEXT, formattedText)
-                                        type = "text/plain"
-                                    }
-                                    context.startActivity(Intent.createChooser(sendIntent, "Ulashish"))
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = UzLegalCyan),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(48.dp)
-                            ) {
-                                Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Ulashish")
-                            }
-                        }
-                    }
-                }
+                DocumentViewerScreen(
+                    title = template.title,
+                    content = formattedText,
+                    statutoryBasis = template.statutoryBasis,
+                    onBack = { showPreview = false }
+                )
             }
         }
     }

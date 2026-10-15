@@ -331,9 +331,6 @@ fun ProfileScreen(
                 }
 
                 item {
-                    OfficialSourceCard("Lex.uz", "Qonunchilik ma'lumotlari milliy bazasi", "https://lex.uz")
-                }
-                item {
                     OfficialSourceCard("Sud.uz", "Oliy Sud rasmiy veb-portali", "https://sud.uz")
                 }
                 item {

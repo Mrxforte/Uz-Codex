@@ -57,3 +57,60 @@ data class LessonProgressEntity(
     val isCompleted: Boolean = true,
     val completedAt: Long = System.currentTimeMillis()
 )
+
+@Entity(tableName = "generated_test_sets")
+data class GeneratedTestSetEntity(
+    @PrimaryKey
+    val id: String,
+    val title: String,
+    val createdAt: Long = System.currentTimeMillis(),
+    val questionCount: Int,
+    val selectionSummary: String,
+    val configJson: String
+)
+
+@Entity(tableName = "generated_questions")
+data class GeneratedQuestionEntity(
+    @PrimaryKey
+    val id: String,
+    val testSetId: String,
+    val questionText: String,
+    val questionType: String,
+    val optionsJson: String,
+    val correctIndicesJson: String,
+    val matchPairsJson: String? = null,
+    val fillInBlankAnswer: String? = null,
+    val explanation: String,
+    val codeId: String,
+    val codeName: String,
+    val chapter: String,
+    val articleNumber: Int,
+    val articleNumberStr: String,
+    val articleTitle: String,
+    val sourceExcerpt: String,
+    val difficulty: String,
+    val fingerprint: String,
+    val isBookmarked: Boolean = false
+)
+
+@Entity(tableName = "test_attempt_history")
+data class TestAttemptHistoryEntity(
+    @PrimaryKey
+    val id: String,
+    val testSetId: String,
+    val testTitle: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val scorePercentage: Int,
+    val correctCount: Int,
+    val totalCount: Int,
+    val userAnswersJson: String,
+    val durationSeconds: Int,
+    val earnedXp: Int
+)
+
+@Entity(tableName = "generated_fingerprints")
+data class GeneratedFingerprintEntity(
+    @PrimaryKey
+    val fingerprint: String,
+    val generatedAt: Long = System.currentTimeMillis()
+)

@@ -6,6 +6,7 @@ plugins {
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.secrets)
   alias(libs.plugins.google.services)
+  jacoco
 }
 
 android {
@@ -53,6 +54,8 @@ android {
       // Do not remove or modify this signingConfig assignment. It is necessary for Android apps in
       // AI Studio.
       signingConfig = signingConfigs.getByName("debugConfig")
+      enableUnitTestCoverage = true
+      enableAndroidTestCoverage = true
     }
   }
   compileOptions {
@@ -79,6 +82,40 @@ secrets {
 }
 
 googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
+
+configure<JacocoPluginExtension> {
+  toolVersion = "0.8.15"
+}
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+  dependsOn("testDebugUnitTest")
+  reports {
+    xml.required.set(true)
+    html.required.set(true)
+  }
+  val fileFilter = listOf(
+    "**/R.class", "**/R\$*.class", "**/BuildConfig.*", "**/Manifest*.*",
+    "**/*Test*.*", "android/**/*.*", "**/*_Impl*.*", "**/*Dao_*.class",
+    "**/*_Factory*.*", "**/*_MembersInjector*.*", "**/Dagger*Component*.*"
+  )
+  val kotlinClasses = fileTree("${project.layout.buildDirectory.get()}/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes") {
+    exclude(fileFilter)
+  }
+  val tmpClasses = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+    exclude(fileFilter)
+  }
+  val javaClasses = fileTree("${project.layout.buildDirectory.get()}/intermediates/javac/debug/compileDebugJavaWithJavac/classes") {
+    exclude(fileFilter)
+  }
+  val mainSrc = "${project.projectDir}/src/main/java"
+
+  classDirectories.setFrom(files(kotlinClasses, tmpClasses, javaClasses))
+  sourceDirectories.setFrom(files(mainSrc))
+  executionData.setFrom(fileTree(project.layout.buildDirectory.get()) {
+    include("jacoco/testDebugUnitTest.exec")
+    include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
+  })
+}
 
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
@@ -139,6 +176,7 @@ dependencies {
   androidTestImplementation(libs.androidx.runner)
   debugImplementation(libs.androidx.compose.ui.test.manifest)
   debugImplementation(libs.androidx.compose.ui.tooling)
+  debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
 }

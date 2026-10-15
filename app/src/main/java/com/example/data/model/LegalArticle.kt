@@ -8,7 +8,6 @@ data class LegalArticle(
     val articleNumberStr: String,
     val title: String,
     val content: String,
-    val lexUzUrl: String,
     val effectiveDate: String,
     val status: String = "Amalda",
     val isKeyArticle: Boolean = true,

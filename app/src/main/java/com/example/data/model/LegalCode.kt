@@ -9,7 +9,6 @@ data class LegalCode(
     val adoptionDate: String,
     val effectiveDate: String,
     val status: String = "Amalda",
-    val lexUzUrl: String,
     val description: String,
     val totalArticlesEstimate: Int,
     val category: String,

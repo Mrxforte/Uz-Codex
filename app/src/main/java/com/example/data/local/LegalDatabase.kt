@@ -11,9 +11,13 @@ import androidx.room.RoomDatabase
         UserNoteEntity::class,
         SavedCaseAnalysisEntity::class,
         UserProfileEntity::class,
-        LessonProgressEntity::class
+        LessonProgressEntity::class,
+        GeneratedTestSetEntity::class,
+        GeneratedQuestionEntity::class,
+        TestAttemptHistoryEntity::class,
+        GeneratedFingerprintEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class LegalDatabase : RoomDatabase() {
@@ -29,7 +33,9 @@ abstract class LegalDatabase : RoomDatabase() {
                     context.applicationContext,
                     LegalDatabase::class.java,
                     "uzbekistan_legal_ecosystem.db"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration(true)
+                    .build()
                 INSTANCE = instance
                 instance
             }

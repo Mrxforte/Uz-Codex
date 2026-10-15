@@ -42,6 +42,7 @@ import com.example.ui.theme.*
 fun HomeScreen(
     repository: LegalRepository,
     onNavigate: (String) -> Unit,
+    onSelectCode: (String) -> Unit,
     onOpenScenario: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -295,7 +296,7 @@ fun HomeScreen(
                             CodeCoverCard(
                                 code = code,
                                 index = index,
-                                onClick = { onNavigate("legislation") }
+                                onClick = { onSelectCode(code.id) }
                             )
                         }
                     }

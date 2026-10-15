@@ -5,13 +5,22 @@ import com.example.data.local.*
 import com.example.data.model.*
 import com.example.data.remote.ChatMessage
 import com.example.data.remote.GeminiLegalAssistant
+import com.example.data.remote.SmartRagQuestionGenerator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
+import org.json.JSONArray
+import org.json.JSONObject
 
 class LegalRepository(context: Context) {
 
+    private val appContext = context.applicationContext
     private val db = LegalDatabase.getDatabase(context)
     private val dao = db.legalDao()
+    private val ragQuestionGenerator = SmartRagQuestionGenerator(appContext)
+
+    init {
+        LegislationData.loadAllArticles(appContext)
+    }
 
     // --- Legislation ---
     fun getAllCodes(): List<LegalCode> = LegislationData.UZBEKISTAN_CODES
@@ -19,13 +28,14 @@ class LegalRepository(context: Context) {
     fun getCodeById(id: String): LegalCode? = LegislationData.getCodeById(id)
 
     fun getArticlesForCode(codeId: String): List<LegalArticle> =
-        LegislationData.getArticlesForCode(codeId)
+        LegislationData.getArticlesForCode(codeId, appContext)
 
     fun getArticleById(articleId: String): LegalArticle? =
-        LegislationData.KEY_ARTICLES.find { it.id == articleId }
+        LegislationData.getAllArticles(appContext).find { it.id == articleId }
+            ?: LegislationData.KEY_ARTICLES.find { it.id == articleId }
 
     fun searchArticles(query: String): List<LegalArticle> =
-        LegislationData.searchArticles(query)
+        LegislationData.searchArticles(query, appContext)
 
     // Bookmarks
     fun getAllBookmarks(): Flow<List<BookmarkEntity>> = dao.getAllBookmarks()
@@ -150,6 +160,163 @@ class LegalRepository(context: Context) {
 
     // --- Gemini AI Assistant ---
     suspend fun sendAIAssistantMessage(query: String, history: List<ChatMessage>): ChatMessage {
-        return GeminiLegalAssistant.askLegalQuestion(query, history)
+        return GeminiLegalAssistant.askLegalQuestion(appContext, query, history)
     }
+
+    // --- SMART RAG Test Generator Operations ---
+
+    suspend fun generateRagTestQuestions(
+        selection: LegalSourceSelection,
+        config: TestGenerationConfig,
+        onProgress: (currentCount: Int, targetEstimate: Int, status: String) -> Unit = { _, _, _ -> }
+    ): List<GeneratedTestQuestion> {
+        val prevFingerprints = if (config.excludePreviouslyGenerated) {
+            dao.getAllGeneratedFingerprints().toSet()
+        } else emptySet()
+
+        val generated = ragQuestionGenerator.generateQuestions(
+            selection = selection,
+            config = config,
+            previouslyGeneratedFingerprints = prevFingerprints,
+            onProgress = onProgress
+        )
+
+        // Save fingerprints to database to exclude in future sessions
+        if (generated.isNotEmpty()) {
+            val fpEntities = generated.map { GeneratedFingerprintEntity(it.fingerprint) }
+            dao.insertFingerprints(fpEntities)
+        }
+
+        return generated
+    }
+
+    suspend fun saveGeneratedTestSet(
+        title: String,
+        selectionSummary: String,
+        config: TestGenerationConfig,
+        questions: List<GeneratedTestQuestion>
+    ): String {
+        val testSetId = "test_set_${System.currentTimeMillis()}"
+
+        val setEntity = GeneratedTestSetEntity(
+            id = testSetId,
+            title = title,
+            questionCount = questions.size,
+            selectionSummary = selectionSummary,
+            configJson = JSONObject().apply {
+                put("isMaxAvailableMode", config.isMaxAvailableMode)
+                put("difficulty", config.difficulty.name)
+            }.toString()
+        )
+
+        val questionEntities = questions.map { q ->
+            GeneratedQuestionEntity(
+                id = q.id,
+                testSetId = testSetId,
+                questionText = q.questionText,
+                questionType = q.questionType.name,
+                optionsJson = JSONArray(q.options).toString(),
+                correctIndicesJson = JSONArray(q.correctIndices).toString(),
+                matchPairsJson = q.matchPairs?.let { pairs ->
+                    JSONArray(pairs.map { JSONObject().put("left", it.first).put("right", it.second) }).toString()
+                },
+                fillInBlankAnswer = q.fillInBlankAnswer,
+                explanation = q.explanation,
+                codeId = q.codeId,
+                codeName = q.codeName,
+                chapter = q.chapter,
+                articleNumber = q.articleNumber,
+                articleNumberStr = q.articleNumberStr,
+                articleTitle = q.articleTitle,
+                sourceExcerpt = q.supportingSourceExcerpt,
+                difficulty = q.difficulty.name,
+                fingerprint = q.fingerprint
+            )
+        }
+
+        dao.insertGeneratedTestSet(setEntity)
+        dao.insertGeneratedQuestions(questionEntities)
+        return testSetId
+    }
+
+    fun getAllSavedTestSets(): Flow<List<GeneratedTestSetEntity>> = dao.getAllGeneratedTestSets()
+
+    suspend fun getQuestionsForTestSet(testSetId: String): List<GeneratedTestQuestion> {
+        val entities = dao.getQuestionsForTestSet(testSetId)
+        return entities.map { e ->
+            val optionsList = mutableListOf<String>()
+            val optArr = JSONArray(e.optionsJson)
+            for (i in 0 until optArr.length()) {
+                optionsList.add(optArr.getString(i))
+            }
+
+            val correctIndicesList = mutableListOf<Int>()
+            val corrArr = JSONArray(e.correctIndicesJson)
+            for (i in 0 until corrArr.length()) {
+                correctIndicesList.add(corrArr.getInt(i))
+            }
+
+            val matchPairs = e.matchPairsJson?.let { json ->
+                val arr = JSONArray(json)
+                val pairs = mutableListOf<Pair<String, String>>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    pairs.add(obj.getString("left") to obj.getString("right"))
+                }
+                pairs
+            }
+
+            GeneratedTestQuestion(
+                id = e.id,
+                questionText = e.questionText,
+                questionType = try { QuestionType.valueOf(e.questionType) } catch (_: Exception) { QuestionType.SINGLE_CHOICE },
+                options = optionsList,
+                correctIndices = correctIndicesList,
+                matchPairs = matchPairs,
+                fillInBlankAnswer = e.fillInBlankAnswer,
+                explanation = e.explanation,
+                codeId = e.codeId,
+                codeName = e.codeName,
+                chapter = e.chapter,
+                articleNumber = e.articleNumber,
+                articleNumberStr = e.articleNumberStr,
+                articleTitle = e.articleTitle,
+                supportingSourceExcerpt = e.sourceExcerpt,
+                difficulty = try { TestDifficulty.valueOf(e.difficulty) } catch (_: Exception) { TestDifficulty.MIXED },
+                fingerprint = e.fingerprint
+            )
+        }
+    }
+
+    suspend fun deleteGeneratedTestSet(id: String) {
+        dao.deleteQuestionsForTestSet(id)
+        dao.deleteGeneratedTestSet(id)
+    }
+
+    suspend fun saveTestAttempt(
+        testSetId: String,
+        testTitle: String,
+        scorePercentage: Int,
+        correctCount: Int,
+        totalCount: Int,
+        userAnswersMap: Map<Int, List<Int>>,
+        durationSeconds: Int,
+        earnedXp: Int
+    ) {
+        val attemptEntity = TestAttemptHistoryEntity(
+            id = "attempt_${System.currentTimeMillis()}",
+            testSetId = testSetId,
+            testTitle = testTitle,
+            scorePercentage = scorePercentage,
+            correctCount = correctCount,
+            totalCount = totalCount,
+            userAnswersJson = JSONObject(userAnswersMap.mapKeys { it.key.toString() }).toString(),
+            durationSeconds = durationSeconds,
+            earnedXp = earnedXp
+        )
+        dao.insertTestAttempt(attemptEntity)
+        addXp(earnedXp)
+    }
+
+    fun getAllTestAttempts(): Flow<List<TestAttemptHistoryEntity>> = dao.getAllTestAttempts()
 }

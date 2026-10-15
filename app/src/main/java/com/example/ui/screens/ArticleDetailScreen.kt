@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,7 +36,8 @@ fun ArticleDetailScreen(
     articleId: String,
     repository: LegalRepository,
     onBack: () -> Unit,
-    onSelectRelatedArticle: (String) -> Unit
+    onSelectRelatedArticle: (String) -> Unit,
+    onOpenFullScreenViewer: ((String, String, String?) -> Unit)? = null
 ) {
     val article = remember(articleId) { repository.getArticleById(articleId) }
     val code = remember(article) { article?.let { repository.getCodeById(it.codeId) } }
@@ -81,7 +81,7 @@ fun ArticleDetailScreen(
                             if (article != null) {
                                 val sendIntent: Intent = Intent().apply {
                                     action = Intent.ACTION_SEND
-                                    putExtra(Intent.EXTRA_TEXT, "${article.articleNumberStr}: ${article.title}\n\n${article.content}\n\nManba: ${article.lexUzUrl}")
+                                    putExtra(Intent.EXTRA_TEXT, "${article.articleNumberStr}: ${article.title}\n\n${cleanPdfDocumentText(article.content)}\n\nManba: Tasdiqlangan milliy huquqiy baza")
                                     type = "text/plain"
                                 }
                                 val shareIntent = Intent.createChooser(sendIntent, "Moddani ulashish")
@@ -173,57 +173,64 @@ fun ArticleDetailScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "RASMIY MATN (LEX.UZ)",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = LegalGoldDark,
-                                        letterSpacing = 1.sp
-                                    )
-                                )
-
-                                IconButton(
-                                    onClick = {
-                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                        val clip = ClipData.newPlainText("Legal Article", article.content)
-                                        clipboard.setPrimaryClip(clip)
-                                        Toast.makeText(context, "Matn nusxalandi", Toast.LENGTH_SHORT).show()
-                                    },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.ContentCopy,
-                                        contentDescription = "Nusxalash",
-                                        tint = LegalNavyPrimary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
-
-                            Text(
-                                text = article.content,
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    lineHeight = 26.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                text = "RASMIY MATN",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = LegalGoldDark,
+                                    letterSpacing = 1.sp
                                 )
                             )
 
-                            Spacer(modifier = Modifier.height(16.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (onOpenFullScreenViewer != null) {
+                                        IconButton(
+                                            onClick = {
+                                                onOpenFullScreenViewer(
+                                                    "${article.articleNumberStr}: ${article.title}",
+                                                    "${article.chapter}\n\n${article.articleNumberStr}. ${article.title}\n\n${cleanPdfDocumentText(article.content)}",
+                                                    code?.shortName
+                                                )
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.OpenInFull,
+                                                contentDescription = "Full Screen Rejimi",
+                                                tint = LegalNavyPrimary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
 
-                            Button(
-                                onClick = {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(article.lexUzUrl))
-                                    context.startActivity(intent)
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = LegalNavyPrimary),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Lex.uz rasmiy manbasida ko'rish")
-                            }
+                                    IconButton(
+                                        onClick = {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                            val clip = ClipData.newPlainText("Legal Article", cleanPdfDocumentText(article.content))
+                                            clipboard.setPrimaryClip(clip)
+                                            Toast.makeText(context, "Matn nusxalandi", Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ContentCopy,
+                                            contentDescription = "Nusxalash",
+                                            tint = LegalNavyPrimary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+
+                        Text(
+                            text = cleanPdfDocumentText(article.content),
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                lineHeight = 26.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
                         }
                     }
                 }

@@ -57,4 +57,41 @@ interface LegalDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun markLessonCompleted(progress: LessonProgressEntity)
+
+    // --- RAG Test Generator Persistence ---
+
+    @Query("SELECT * FROM generated_test_sets ORDER BY createdAt DESC")
+    fun getAllGeneratedTestSets(): Flow<List<GeneratedTestSetEntity>>
+
+    @Query("SELECT * FROM generated_test_sets WHERE id = :id")
+    suspend fun getGeneratedTestSetById(id: String): GeneratedTestSetEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGeneratedTestSet(testSet: GeneratedTestSetEntity)
+
+    @Query("DELETE FROM generated_test_sets WHERE id = :id")
+    suspend fun deleteGeneratedTestSet(id: String)
+
+    @Query("SELECT * FROM generated_questions WHERE testSetId = :testSetId")
+    suspend fun getQuestionsForTestSet(testSetId: String): List<GeneratedQuestionEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGeneratedQuestions(questions: List<GeneratedQuestionEntity>)
+
+    @Query("DELETE FROM generated_questions WHERE testSetId = :testSetId")
+    suspend fun deleteQuestionsForTestSet(testSetId: String)
+
+    // Attempts History
+    @Query("SELECT * FROM test_attempt_history ORDER BY timestamp DESC")
+    fun getAllTestAttempts(): Flow<List<TestAttemptHistoryEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTestAttempt(attempt: TestAttemptHistoryEntity)
+
+    // Duplicate Detection Fingerprints
+    @Query("SELECT fingerprint FROM generated_fingerprints")
+    suspend fun getAllGeneratedFingerprints(): List<String>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertFingerprints(fingerprints: List<GeneratedFingerprintEntity>)
 }

@@ -10,6 +10,5 @@ data class LegislationUpdate(
     val summaryOfChange: String,
     val oldWording: String,
     val newWording: String,
-    val sourceUrl: String,
     val importance: String = "Yuqori" // Yuqori, O'rta, Texnik
 )

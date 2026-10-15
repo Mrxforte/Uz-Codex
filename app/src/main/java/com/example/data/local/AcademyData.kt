@@ -67,7 +67,7 @@ object AcademyData {
                     keyPoints = listOf(
                         "Modda, qism, band va xatboshilar tuzilishi.",
                         "Gipoteza, dispozitsiya va sanksiya tushunchalari.",
-                        "Lex.uz rasmiy manbasidan yangilanishlarni tekshirish."
+                        "Tasdiqlangan milliy huquqiy bazadan yangilanishlarni tekshirish."
                     ),
                     articleReferences = listOf("Qonunchilik texnikasi qoidalari"),
                     explanationText = "Qonun normasini to'g'ri qo'llash uchun dispozitsiya va sanksiyani to'g'ri farqlash zarur.",

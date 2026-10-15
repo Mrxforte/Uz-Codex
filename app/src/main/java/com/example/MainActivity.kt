@@ -46,6 +46,7 @@ sealed class Screen(val route: String) {
     object Quiz : Screen("quiz")
     object Academy : Screen("academy")
     object DocumentGenerator : Screen("document_generator")
+    data class DocumentViewer(val title: String, val content: String, val statutoryBasis: String? = null) : Screen("document_viewer")
     object Updates : Screen("updates")
     object Offline : Screen("offline")
 }
@@ -125,7 +126,7 @@ fun MainAppContainer(repository: LegalRepository) {
                             "Assalomu alaykum! Huquqiy vaziyat (keys) tahlilida qanday huquqiy normalar qo'llanilishi kerakligini tushuntirib bering."
                         }
                         is Screen.Quiz -> {
-                            "Assalomu alaykum! Huquqiy test savollariga tayyorlanishda qaysi kodeks moddalariga ko'proq e'tibor qaratish kerak?"
+                            "Assalomu alaykum! Smart RAG test savollariga tayyorlanishda qaysi kodeks moddalariga ko'proq e'tibor qaratish kerak?"
                         }
                         else -> null
                     }
@@ -157,6 +158,9 @@ fun MainAppContainer(repository: LegalRepository) {
                                 else -> navigateToTopLevel(route)
                             }
                         },
+                        onSelectCode = { codeId ->
+                            navigateTo(Screen.CodeDetail(codeId))
+                        },
                         onOpenScenario = { scenarioId ->
                             navigateTo(Screen.CaseAnalyzer(initialScenarioId = scenarioId))
                         }
@@ -167,6 +171,9 @@ fun MainAppContainer(repository: LegalRepository) {
                     SearchScreen(
                         repository = repository,
                         onBack = { popBack() },
+                        onSelectCode = { codeId ->
+                            navigateTo(Screen.CodeDetail(codeId))
+                        },
                         onSelectArticle = { articleId ->
                             navigateTo(Screen.ArticleDetail(articleId))
                         }
@@ -219,6 +226,9 @@ fun MainAppContainer(repository: LegalRepository) {
                         onBack = { popBack() },
                         onSelectArticle = { articleId ->
                             navigateTo(Screen.ArticleDetail(articleId))
+                        },
+                        onOpenFullScreenViewer = { title, content, basis ->
+                            navigateTo(Screen.DocumentViewer(title, content, basis))
                         }
                     )
                 }
@@ -230,6 +240,9 @@ fun MainAppContainer(repository: LegalRepository) {
                         onBack = { popBack() },
                         onSelectRelatedArticle = { relId ->
                             navigateTo(Screen.ArticleDetail(relId))
+                        },
+                        onOpenFullScreenViewer = { title, content, basis ->
+                            navigateTo(Screen.DocumentViewer(title, content, basis))
                         }
                     )
                 }
@@ -246,7 +259,7 @@ fun MainAppContainer(repository: LegalRepository) {
                 }
 
                 is Screen.Quiz -> {
-                    QuizScreen(
+                    TestGeneratorScreen(
                         repository = repository,
                         onBack = { popBack() }
                     )
@@ -263,6 +276,15 @@ fun MainAppContainer(repository: LegalRepository) {
                 is Screen.DocumentGenerator -> {
                     DocumentGeneratorScreen(
                         repository = repository,
+                        onBack = { popBack() }
+                    )
+                }
+
+                is Screen.DocumentViewer -> {
+                    DocumentViewerScreen(
+                        title = screen.title,
+                        content = screen.content,
+                        statutoryBasis = screen.statutoryBasis,
                         onBack = { popBack() }
                     )
                 }
