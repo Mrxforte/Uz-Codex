@@ -1,0 +1,6 @@
+{
+  "name": "UzLegal",
+  "description": "O'zbekiston qonunchiligi — barcha kodekslar, qonunlar, AI yordamchi, vaziyat tahlili va testlar bitta ilovada.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
