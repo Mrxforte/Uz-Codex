@@ -1,10 +1,8 @@
 package com.example.data.local
 
 import com.example.data.model.LegislationUpdate
-import com.example.data.remote.GeminiLegalAssistant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 
 object UpdatesData {
 
@@ -72,64 +70,9 @@ object UpdatesData {
     )
 
     /**
-     * Dynamically fetches live legal decrees, resolutions, and laws via AI/Online Legal Service.
+     * Returns the latest official decrees and legislation updates.
      */
     suspend fun fetchLiveDecreesAndUpdates(): List<LegislationUpdate> = withContext(Dispatchers.IO) {
-        try {
-            val prompt = """
-                O'zbekiston Respublikasining eng so'nggi va muhim Prezident Farmonlari (PF-sonli), Prezident Qarorlari (PQ-sonli) hamda Qonunchilikdagi o'zgarishlaridan 5 tasini JSON ro'yxati shaklida qaytaring.
-                Format (JSON Array ONLY, no markdown wrapping):
-                [
-                  {
-                    "id": "online_pf_1",
-                    "codeName": "Prezident Farmoni",
-                    "articleNumber": "PF-sonli Farmon",
-                    "amendingLaw": "Hujjatning to'liq rasmiy nomi",
-                    "adoptedDate": "01.02.2025",
-                    "effectiveDate": "05.02.2025",
-                    "summaryOfChange": "Farmon / Qarorning qisqacha mazmuni va kiritilgan asosiy yangilik",
-                    "oldWording": "Ilgari amal qilgan tartib",
-                    "newWording": "Yangi o'rnatilgan tartib va qoidalar",
-                    "importance": "Yuqori"
-                  }
-                ]
-            """.trimIndent()
-
-            val aiResponse = GeminiLegalAssistant.askLegalQuestion(prompt, emptyList())
-            val rawText = aiResponse.text.trim()
-                .removePrefix("```json")
-                .removePrefix("```")
-                .removeSuffix("```")
-                .trim()
-
-            val jsonArray = JSONArray(rawText)
-            val list = mutableListOf<LegislationUpdate>()
-            for (i in 0 until jsonArray.length()) {
-                val obj = jsonArray.getJSONObject(i)
-                list.add(
-                    LegislationUpdate(
-                        id = obj.optString("id", "online_$i"),
-                        codeName = obj.optString("codeName", "Prezident Hujjati"),
-                        articleNumber = obj.optString("articleNumber", "PF/PQ-sonli"),
-                        amendingLaw = obj.optString("amendingLaw", "O'zbekiston Respublikasi Normativ Hujjati"),
-                        adoptedDate = obj.optString("adoptedDate", "2025-yil"),
-                        effectiveDate = obj.optString("effectiveDate", "Amalda"),
-                        summaryOfChange = obj.optString("summaryOfChange", "Yangi huquqiy norma va tartib o'rnatildi."),
-                        oldWording = obj.optString("oldWording", "Oldingi tartib va amaliyot."),
-                        newWording = obj.optString("newWording", "Yangi tasdiqlangan qoidalar."),
-                        importance = obj.optString("importance", "Yuqori")
-                    )
-                )
-            }
-
-            if (list.isNotEmpty()) {
-                list + RECENT_UPDATES
-            } else {
-                RECENT_UPDATES
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            RECENT_UPDATES
-        }
+        RECENT_UPDATES
     }
 }

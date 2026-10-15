@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,9 +17,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -130,7 +131,7 @@ fun UzLegalBottomBar(
     Surface(
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 8.dp,
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, UzLegalBorder),
+        border = BorderStroke(0.5.dp, UzLegalBorder),
         modifier = Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
@@ -163,41 +164,7 @@ fun UzLegalBottomBar(
                 testTag = "nav_search"
             )
 
-            // Tab 3: Center Elevated AI Button
-            Box(
-                modifier = Modifier
-                    .offset(y = (-10).dp)
-                    .size(54.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(UzLegalPrimary, UzLegalCyan)
-                        )
-                    )
-                    .shadow(elevation = 6.dp, shape = CircleShape)
-                    .clickable { onNavigate("ai_chat") }
-                    .testTag("nav_ai_chat"),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = "AI",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text(
-                        text = "AI",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp
-                        )
-                    )
-                }
-            }
-
-            // Tab 4: Sevimlilar (Bookmarks)
+            // Tab 3: Sevimlilar (Bookmarks)
             NavTabItem(
                 label = "Sevimlilar",
                 selectedIcon = Icons.Default.Favorite,
@@ -207,7 +174,7 @@ fun UzLegalBottomBar(
                 testTag = "nav_bookmarks"
             )
 
-            // Tab 5: Profil
+            // Tab 4: Profil
             NavTabItem(
                 label = "Profil",
                 selectedIcon = Icons.Default.Person,
@@ -223,8 +190,8 @@ fun UzLegalBottomBar(
 @Composable
 fun NavTabItem(
     label: String,
-    selectedIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    unselectedIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    selectedIcon: ImageVector,
+    unselectedIcon: ImageVector,
     isSelected: Boolean,
     onClick: () -> Unit,
     testTag: String

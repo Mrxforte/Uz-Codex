@@ -6,7 +6,6 @@ import com.example.data.local.LegislationData
 import com.example.data.remote.HybridLegalRetrievalEngine
 import com.example.data.remote.LegalEvidenceValidator
 import com.example.data.remote.QueryUnderstandingEngine
-import com.example.data.remote.StructuredGeminiRagService
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Before
@@ -31,14 +30,12 @@ class UzLegal100RAGBenchmarkTest {
 
     private lateinit var context: Context
     private lateinit var retrievalEngine: HybridLegalRetrievalEngine
-    private lateinit var ragService: StructuredGeminiRagService
 
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         LegislationData.loadAllArticles(context)
         retrievalEngine = HybridLegalRetrievalEngine(context)
-        ragService = StructuredGeminiRagService(context)
     }
 
     private fun generate100BenchmarkCases(): List<BenchmarkTestCase> {

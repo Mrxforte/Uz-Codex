@@ -2,7 +2,6 @@ package com.example
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.example.data.remote.ChatMessage
 import com.example.data.repository.LegalRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -133,12 +132,5 @@ class LegalRepositoryTest {
 
         val updates = repository.getRecentUpdates()
         assertTrue(updates.isNotEmpty())
-    }
-
-    @Test
-    fun testAIAssistant() = runBlocking {
-        val message = repository.sendAIAssistantMessage("Yordam bering", listOf(ChatMessage(id = "1", sender = "user", text = "Salom")))
-        assertNotNull(message)
-        assertEquals("assistant", message.sender)
     }
 }

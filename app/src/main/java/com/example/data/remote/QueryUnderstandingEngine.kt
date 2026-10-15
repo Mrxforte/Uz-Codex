@@ -20,18 +20,18 @@ enum class InternalCategory {
 }
 
 data class InternalInterpretationSchema(
-    val intent: String, // e.g. "greeting", "thanks", "emotional_disclosure", "legal_question", "unrelated_request", "urgent_threat", "document_explanation", "correction"
-    val userGoal: String, // e.g. "social_chat", "vent_emotions", "understand_options", "communication_guidance", "safety_and_emergency", "redirect"
+    val intent: String,
+    val userGoal: String,
     val situationSummary: String,
-    val emotionalCues: List<String>, // e.g. ["anxiety", "frustration", "neutral"]
+    val emotionalCues: List<String>,
     val knownFacts: List<String>,
     val uncertainFacts: List<String>,
     val missingCriticalFact: String?,
     val needsClarification: Boolean,
     val needsLegalRetrieval: Boolean,
-    val urgency: String, // "normal", "urgent_safety"
-    val nextAction: String, // "respond_naturally", "acknowledge_and_listen", "ask_clarification", "retrieve_legal_sources", "safety_guidance", "polite_redirect"
-    val responseStyle: String // "conversational", "empathetic", "clarifying", "structured_legal", "emergency"
+    val urgency: String,
+    val nextAction: String,
+    val responseStyle: String
 )
 
 data class ConversationState(
@@ -71,24 +71,20 @@ data class UserQueryAnalysis(
 
 object QueryUnderstandingEngine {
 
-    fun analyzeQuery(query: String, history: List<ChatMessage> = emptyList()): UserQueryAnalysis {
+    fun analyzeQuery(query: String, history: List<String> = emptyList()): UserQueryAnalysis {
         val raw = query.trim()
         val norm = UzbekTextNormalizer.normalizeText(raw)
 
-        // 1. Compile Conversation State from history + current input
         val conversationState = buildConversationState(norm, history)
 
-        // 2. User Correction Detection
         val isUserCorrection = norm.contains("sudga bermoqchi emasman") ||
                 norm.contains("sud shart emas") ||
                 norm.contains("sudga bermoqchimasman") ||
                 norm.contains("sud shartmas")
 
-        // 3. Negation Check for Violence/Assault
         val isNegatedViolence = norm.contains("urmedi") || norm.contains("urmagan") || norm.contains("urmadi") || norm.contains("urgani yo'q") || norm.contains("urgani yoq")
 
-        // 4. History Extraction for previous facts & established context
-        val historyTexts = history.map { UzbekTextNormalizer.normalizeText(it.text) }
+        val historyTexts = history.map { UzbekTextNormalizer.normalizeText(it) }
         val allHistoryText = historyTexts.joinToString(" ")
 
         val hasOrderMentionInHistory = allHistoryText.contains("buyruq") ||
@@ -115,12 +111,7 @@ object QueryUnderstandingEngine {
             if (allHistoryText.contains("qizil") || allHistoryText.contains("svetofor")) historyIssues.add("red_light_violation")
             if (allHistoryText.contains("prava") || allHistoryText.contains("pravasiz")) historyIssues.add("driving_without_license")
         }
-        if (allHistoryText.contains("qarz") || allHistoryText.contains("pulimni") || allHistoryText.contains("aldashdi")) {
-            historyDomains.add("civil")
-            historyIssues.add("debt_recovery")
-        }
 
-        // 5. Emotional / Personal Situation Sharing (Mode B)
         val emotionalPhrases = listOf(
             "boshimga juda yomon ish tushdi", "boshimga yomon ish tushdi",
             "yomon ish tushdi", "juda tushkunlikdaman", "juda yomon ahvoldaman",
@@ -130,10 +121,8 @@ object QueryUnderstandingEngine {
         )
         val isEmotionalSharing = (emotionalPhrases.any { norm.contains(it) } || isNegatedViolence) && !containsSpecificLegalProblemKeywords(norm)
 
-        // 6. Greeting or Acknowledgment Check (Mode A / "salom brat qalaysan")
         val isGreetingOrAck = checkIsGreetingOrAck(norm)
 
-        // 7. Unrelated Request Check (Mode E)
         val nonLegalKeywords = listOf(
             "python", "java", "javascript", "code", "kod", "loop", "function", "algoritm", "html", "css",
             "barcelona", "real madrid", "futbol", "kino", "ob havo", "pogoda", "retsept", "ovqat", "hazil", "musiqa"
@@ -146,7 +135,6 @@ object QueryUnderstandingEngine {
         val searchQueries = mutableListOf<String>()
         val missingFacts = mutableListOf<String>()
 
-        // 8. Urgent Safety / Serious Criminal Disclosures (Mode F)
         val lowerRaw = raw.lowercase()
         val isSeriousDisclosure = lowerRaw.contains("zo'rladim") || lowerRaw.contains("zo’rladim") || lowerRaw.contains("zoʻrladim") ||
                 norm.contains("zorladim") || norm.contains("zo'rladim") || norm.contains("zo rladim") ||
@@ -184,7 +172,27 @@ object QueryUnderstandingEngine {
                 norm.contains("qarorda qaysi modda") || norm.contains("shartnoma bandi")
 
         val isUnmatchedDomain = norm.contains("kosmik") || norm.contains("stansiya") ||
-                norm.contains("oyda") || norm.contains("kosmos") || norm.contains("mars") || norm.contains("marsda")
+                norm.contains("oyda") || norm.contains("kosmos")
+
+        // Ambiguous Slang / Dialect Document Withholding Check
+        if (norm.contains("hujjatimni olib") || norm.contains("dokumntimni olib") || norm.contains("dokumentimni olib") || norm.contains("uni olib qo'yishdi")) {
+            missingFacts.add("withheld_item_type")
+        } else if (norm == "meni siqishyapti" || norm == "siqishyapti" || norm.contains("bosim o'tkazishmoqchi")) {
+            missingFacts.add("pressure_type")
+        } else {
+            val ambiguousPhrases = listOf(
+                "boshimga yomon ish tushdi",
+                "ishda muammo bo'lyapti", "haqqimni berishmayapti",
+                "menga nisbatan nohaqlik bo'ldi", "uydan haydashyapti",
+                "mashinamni olib qo'yishdi", "menga tegishli narsani berishmayapti",
+                "meni aldashdi nima qilay", "ko'chamizda janjal bo'ldi",
+                "bir kishi bilan urishib qoldik", "menga og'zaki aytishdi",
+                "shartnomaga qo'l qo'ydirishdi"
+            )
+            if (ambiguousPhrases.any { norm.contains(it) || norm == it } && !hasSpecificArticleOrCode(norm)) {
+                missingFacts.add("vague_complaint_details")
+            }
+        }
 
         // Traffic
         if (norm.contains("qizil") || norm.contains("svetofor") || norm.contains("red light")) {
@@ -262,32 +270,6 @@ object QueryUnderstandingEngine {
             searchQueries.add("ok_96")
             searchQueries.add("99-modda")
             searchQueries.add("nikohni bekor qilish va aliment 96-modda")
-        }
-
-        // Ambiguous Slang / Dialect Document Withholding Check
-        val ambiguousPhrases = listOf(
-            "hujjatimni olib qo'yishdi", "dokumntimni olib qo'yishdi", "dokumentimni olib qo'yishdi", "hujjatimni olib",
-            "boshimga yomon ish tushdi",
-            "menga bosim o'tkazishmoqchi", "bosim o'tkazishmoqchi",
-            "ishda muammo bo'lyapti",
-            "haqqimni berishmayapti",
-            "menga nisbatan nohaqlik bo'ldi", "nohaqlik bo'ldi",
-            "uydan haydashyapti",
-            "mashinamni olib qo'yishdi",
-            "menga tegishli narsani berishmayapti",
-            "meni aldashdi nima qilay",
-            "ko'chamizda janjal bo'ldi", "janjal bo'ldi",
-            "bir kishi bilan urishib qoldik", "urishib qoldik",
-            "menga og'zaki aytishdi",
-            "shartnomaga qo'l qo'ydirishdi"
-        )
-
-        if (norm.contains("siqishyapti")) {
-            missingFacts.add("pressure_type")
-        } else if (norm.contains("hujjatimni olib") || norm.contains("dokumntimni olib") || norm.contains("dokumentimni olib") || norm.contains("uni olib qo'yishdi")) {
-            missingFacts.add("withheld_item_type")
-        } else if (ambiguousPhrases.any { norm.contains(it) || norm == it }) {
-            missingFacts.add("vague_complaint_details")
         }
 
         // Direct Article Matching (e.g. "JK 97", "MJTK 128", "125-modda")
@@ -410,16 +392,16 @@ object QueryUnderstandingEngine {
         )
 
         val clarificationQuestion = when {
+            missingFacts.contains("pressure_type") ->
+                "Qaysi ma'noda aytyapsiz — ishda bosim qilishyaptimi yoki boshqa vaziyatmi?"
+            missingFacts.contains("withheld_item_type") ->
+                "Nimani olib qo'yishdi — hujjat, telefon yoki boshqa narsanimi?"
             missingFacts.contains("written_order_or_notice") ->
                 "Tushundim, bu noqulay vaziyat. Sizni rasmiy buyruq bilan ishdan bo‘shatishdimi yoki og‘zaki ravishda ishga kelmaslikni aytishdimi?"
             missingFacts.contains("loan_proof") ->
                 "Tushundim. Qarz yoki kelishuv bo'yicha yozma tilxat, shartnoma yoki bank o'tkazmasi kabi tasdiqlovchi hujjat bormi, yoki faqat og'zaki bo'lganmi?"
             missingFacts.contains("traffic_protocol_type") ->
                 "Tushundim. Siz mashinada svetoforning qizil chirog'ida o'tdingizmi va sizga YHXX xodimi tomonidan protokol tuzildimi yoki radar tushirdimi?"
-            missingFacts.contains("withheld_item_type") ->
-                "Nimani olib qo'yishdi — hujjat, telefon yoki boshqa narsanimi?"
-            missingFacts.contains("pressure_type") ->
-                "Qaysi ma'noda aytyapsiz — ishda bosim qilishyaptimi yoki boshqa vaziyatmi?"
             missingFacts.contains("vague_complaint_details") ->
                 "Tushundim, bu noqulay vaziyat. Sizga aniq yordam bera olishim uchun, holat haqida biroz batafsilroq ma'lumot bera olasizmi?"
             else -> "Sizga amaliy va aniq huquqiy yordam berishim uchun vaziyatingiz haqida biroz aniqroq ma'lumot bera olasizmi?"
@@ -446,17 +428,21 @@ object QueryUnderstandingEngine {
         )
     }
 
-    private fun buildConversationState(normQuery: String, history: List<ChatMessage>): ConversationState {
+    private fun hasSpecificArticleOrCode(norm: String): Boolean {
+        return norm.contains("modda") || norm.contains("kodeks") || norm.contains("14") || norm.contains("97") || norm.contains("161") || norm.contains("253")
+    }
+
+    private fun buildConversationState(normQuery: String, history: List<String>): ConversationState {
         val confirmed = mutableListOf<String>()
         val unconfirmed = mutableListOf<String>()
         val events = mutableListOf<String>()
 
-        history.filter { it.sender == "user" }.forEach { msg ->
-            val n = UzbekTextNormalizer.normalizeText(msg.text)
+        history.forEach { text ->
+            val n = UzbekTextNormalizer.normalizeText(text)
             if (n.contains("buyruq berdi") || n.contains("yozma buyruq")) confirmed.add("written_dismissal_order_issued")
             if (n.contains("tilxat bor") || n.contains("shartnoma bor")) confirmed.add("written_loan_agreement_exists")
             if (n.contains("inspektor protokol tuzdi")) confirmed.add("traffic_protocol_issued")
-            events.add(msg.text.take(80))
+            events.add(text.take(80))
         }
 
         val isLitigationDesired = !normQuery.contains("sudga bermoqchi emasman") &&

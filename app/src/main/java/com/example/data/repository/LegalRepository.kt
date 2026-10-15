@@ -3,8 +3,6 @@ package com.example.data.repository
 import android.content.Context
 import com.example.data.local.*
 import com.example.data.model.*
-import com.example.data.remote.ChatMessage
-import com.example.data.remote.GeminiLegalAssistant
 import com.example.data.remote.SmartRagQuestionGenerator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
@@ -157,11 +155,6 @@ class LegalRepository(context: Context) {
 
     // --- Updates ---
     fun getRecentUpdates(): List<LegislationUpdate> = UpdatesData.RECENT_UPDATES
-
-    // --- Gemini AI Assistant ---
-    suspend fun sendAIAssistantMessage(query: String, history: List<ChatMessage>): ChatMessage {
-        return GeminiLegalAssistant.askLegalQuestion(appContext, query, history)
-    }
 
     // --- SMART RAG Test Generator Operations ---
 

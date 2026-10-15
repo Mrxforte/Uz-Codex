@@ -13,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.data.repository.LegalRepository
-import com.example.ui.components.GlobalAIFab
 import com.example.ui.components.UzLegalBottomBar
 import com.example.ui.screens.*
 import com.example.ui.theme.MyApplicationTheme
@@ -36,7 +35,6 @@ class MainActivity : ComponentActivity() {
 sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Search : Screen("search")
-    data class AIChat(val initialPrompt: String? = null) : Screen("ai_chat")
     object Bookmarks : Screen("bookmarks")
     object Profile : Screen("profile")
     object Legislation : Screen("legislation")
@@ -64,7 +62,6 @@ fun MainAppContainer(repository: LegalRepository) {
         val topScreen: Screen = when (route) {
             "home" -> Screen.Home
             "search" -> Screen.Search
-            "ai_chat" -> Screen.AIChat()
             "bookmarks" -> Screen.Bookmarks
             "profile" -> Screen.Profile
             else -> Screen.Home
@@ -85,11 +82,8 @@ fun MainAppContainer(repository: LegalRepository) {
 
     val isTopLevel = currentScreen is Screen.Home ||
             currentScreen is Screen.Search ||
-            currentScreen is Screen.AIChat ||
             currentScreen is Screen.Bookmarks ||
             currentScreen is Screen.Profile
-
-    val showFab = currentScreen !is Screen.AIChat
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -100,39 +94,6 @@ fun MainAppContainer(repository: LegalRepository) {
                     onNavigate = { route -> navigateToTopLevel(route) }
                 )
             }
-        },
-        floatingActionButton = {
-            GlobalAIFab(
-                visible = showFab,
-                contextSnippet = when (currentScreen) {
-                    is Screen.CodeDetail -> "Kodeks"
-                    is Screen.ArticleDetail -> "Modda"
-                    is Screen.CaseAnalyzer -> "Keys"
-                    is Screen.Quiz -> "Test"
-                    else -> null
-                },
-                hasBottomBar = isTopLevel,
-                onClick = {
-                    val contextualPrompt = when (val s = currentScreen) {
-                        is Screen.CodeDetail -> {
-                            val code = repository.getCodeById(s.codeId)
-                            "Assalomu alaykum! Menga ${code?.shortName ?: "ushbu kodeks"} bo'yicha tushuntirish va amaliy misollar bering."
-                        }
-                        is Screen.ArticleDetail -> {
-                            val article = repository.getArticleById(s.articleId)
-                            "Assalomu alaykum! ${article?.articleNumberStr ?: "Ushbu modda"} (${article?.title ?: ""}) bo'yicha yuridik sharh va sud amaliyoti qanday?"
-                        }
-                        is Screen.CaseAnalyzer -> {
-                            "Assalomu alaykum! Huquqiy vaziyat (keys) tahlilida qanday huquqiy normalar qo'llanilishi kerakligini tushuntirib bering."
-                        }
-                        is Screen.Quiz -> {
-                            "Assalomu alaykum! Smart RAG test savollariga tayyorlanishda qaysi kodeks moddalariga ko'proq e'tibor qaratish kerak?"
-                        }
-                        else -> null
-                    }
-                    navigateTo(Screen.AIChat(initialPrompt = contextualPrompt))
-                }
-            )
         }
     ) { innerPadding ->
         Box(
@@ -174,17 +135,6 @@ fun MainAppContainer(repository: LegalRepository) {
                         onSelectCode = { codeId ->
                             navigateTo(Screen.CodeDetail(codeId))
                         },
-                        onSelectArticle = { articleId ->
-                            navigateTo(Screen.ArticleDetail(articleId))
-                        }
-                    )
-                }
-
-                is Screen.AIChat -> {
-                    AIAssistantScreen(
-                        repository = repository,
-                        initialPrompt = screen.initialPrompt,
-                        onBack = { popBack() },
                         onSelectArticle = { articleId ->
                             navigateTo(Screen.ArticleDetail(articleId))
                         }
